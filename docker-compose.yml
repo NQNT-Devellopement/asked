@@ -1,0 +1,85 @@
+# Asked. — local prod-like stack
+#
+# Builds the production Dockerfile and pairs it with a Postgres service.
+# Useful for testing the runtime image before pushing to Dokploy.
+#
+#   APP_KEY=$(php artisan key:generate --show)
+#   docker compose build
+#   docker compose up
+#   open http://localhost:8080
+#
+# Dokploy itself doesn't read this file — it builds the Dockerfile directly.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: asked
+    container_name: asked-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      APP_NAME: "Asked."
+      APP_ENV: production
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_LOCALE: en
+
+      VITE_APP_NAME: "Asked."
+
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      LOG_LEVEL: warning
+
+      TRUSTED_PROXIES: "*"
+      SESSION_DRIVER: database
+      SESSION_LIFETIME: 120
+      SESSION_SECURE_COOKIE: "false"
+      SESSION_DOMAIN: ""
+      SESSION_SAME_SITE: lax
+
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: asked
+      DB_USERNAME: asked
+      DB_PASSWORD: ${DB_PASSWORD:-asked}
+
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      BROADCAST_CONNECTION: log
+
+      MAIL_MAILER: log
+      MAIL_FROM_ADDRESS: "hello@asked.local"
+      MAIL_FROM_NAME: "Asked."
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  db:
+    image: postgres:16-alpine
+    container_name: asked-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: asked
+      POSTGRES_USER: asked
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-asked}
+    volumes:
+      - asked-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asked -d asked"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  asked-db:

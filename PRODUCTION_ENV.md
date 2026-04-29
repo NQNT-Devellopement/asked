@@ -1,6 +1,6 @@
 # Production env — `asked.fr`
 
-Copy-paste-ready environment variables for deploying **Asked.** to production via **Dokploy + Nixpacks**, configured for the domain `asked.fr`.
+Copy-paste-ready environment variables for deploying **Asked.** to production via **Dokploy + Dockerfile**, configured for the domain `asked.fr`.
 
 > **Security note.** `APP_KEY`, `DB_PASSWORD`, `MAIL_PASSWORD` are secrets — never commit them. Replace the placeholders with real values inside Dokploy's **Environment** UI (not in this file or the repo).
 
@@ -124,13 +124,13 @@ FORTIFY_PASSWORDS=users
 
 ## Dokploy steps
 
-1. **Create app** → connect repo `NQNT-Devellopement/asked`, branch `main`, build provider = **Nixpacks** (auto-detected).
+1. **Create app** → connect repo `NQNT-Devellopement/asked`, branch `main`, build provider = **Dockerfile** (auto-detected from the repo root).
 2. **Add env vars** above into Dokploy's Environment UI.
 3. **Database** → either create the Postgres service (Option A) or add a `/app/database` volume (Option B).
-4. **Domain** → map `asked.fr` to the app, enable Let's Encrypt for HTTPS.
+4. **Domain** → map `asked.fr` to the app, enable Let's Encrypt for HTTPS. Container listens on port `8080`.
 5. **Deploy.**
 
-On first boot, `nixpacks.toml` automatically runs `php artisan migrate --force`, starts a queue worker, and hands off to `php-fpm` behind the bundled nginx.
+On first boot, `docker/entrypoint.sh` runs `php artisan migrate --force` + recaches config / routes / views, then supervisord starts nginx + PHP-FPM + a queue worker.
 
 ---
 
@@ -149,4 +149,5 @@ If anything 5xx's at boot, the Laravel error stack-trace is in Dokploy's logs (`
 
 - [`DEPLOYMENT.md`](./DEPLOYMENT.md) — full deployment reference (variants, troubleshooting, Docker fallback)
 - [`README.md`](./README.md) — project overview
-- [`nixpacks.toml`](./nixpacks.toml) — build phases
+- [`Dockerfile`](./Dockerfile) — multi-stage build (composer + node → php-fpm + nginx)
+- [`docker-compose.yml`](./docker-compose.yml) — local prod-parity stack with Postgres

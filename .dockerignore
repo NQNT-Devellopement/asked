@@ -1,0 +1,79 @@
+# Source-control / IDE
+.git
+.github
+.gitignore
+.gitattributes
+.idea
+.vscode
+.fleet
+.zed
+.nova
+.DS_Store
+
+# Local installs (rebuilt inside the builder stage)
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+
+# Local secrets — Dokploy / docker-compose injects env at runtime
+.env
+.env.*
+.env.backup
+.env.production
+auth.json
+
+# Local DB + storage state
+database/database.sqlite
+database/database.sqlite-journal
+storage/app/private/*
+!storage/app/private/.gitignore
+storage/app/public/*
+!storage/app/public/.gitignore
+storage/framework/cache/*
+!storage/framework/cache/.gitignore
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+storage/framework/testing/*
+!storage/framework/testing/.gitignore
+storage/framework/views/*
+!storage/framework/views/.gitignore
+storage/logs/*
+!storage/logs/.gitignore
+storage/*.key
+
+# Tests aren't needed in the production image
+tests
+.phpunit.result.cache
+phpunit.xml
+
+# Docs / agents — not needed at runtime
+.claude
+.codex
+.junie
+.agents
+.cursor
+.boost
+boost.json
+PRODUCTION_ENV.md
+DEPLOYMENT.md
+README.md
+LICENSE
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+*.md
+
+# Build artifacts of the docker layer
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+.dockerignore
+
+# Misc
+*.swp
+*.log
+npm-debug.log
+yarn-error.log
+pnpm-workspace.yaml
