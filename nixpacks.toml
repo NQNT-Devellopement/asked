@@ -1,64 +1,40 @@
 # Nixpacks build configuration for Asked. (Laravel 13 + Inertia v3 + React 19).
 #
 # The Laravel provider auto-detects this app via the `artisan` file and
-# wires up sensible defaults (PHP-FPM + nginx, composer install, npm build,
-# artisan caches). The blocks below pin versions and inject the Laravel-specific
-# steps this app needs (storage:link, migrate on boot, queue worker).
+# wires up sensible defaults: PHP-FPM + nginx, composer, npm, the standard
+# Laravel PHP extension set (mbstring, xml, pdo_*, gd, intl, bcmath, zip,
+# etc.) and the cache commands. We only:
+#   1. Bump Node to 22 because Vite 8 + @inertiajs/vite need Node 20+ and
+#      the provider defaults to Node 18.
+#   2. Inject the Laravel-specific runtime bits the provider doesn't add by
+#      default (storage:link, migrate-on-boot, queue worker).
+#
+# We deliberately do NOT pin PHP or any extensions in `nixPkgs` — explicit
+# pinning collides with the provider's auto-installed PHP package in the Nix
+# store (e.g. `php-with-extensions-8.4` next to `php-with-extensions-8.3` →
+# `bin/php-cgi` collision, build fails). Trust the provider; if a missing
+# extension surfaces at runtime, declare it via composer.json's `require`
+# (`"ext-foo": "*"`) and the provider will include it.
 #
 # Reference:
 # - https://nixpacks.com/docs/providers/php
 # - https://nixpacks.com/docs/configuration/file
 
 [variables]
-# The Laravel provider invokes the Node provider, which defaults to Node 18.
-# Vite 8 + @inertiajs/vite need Node 20+, so override here. We keep this as
-# a variable rather than pinning `nodejs_22` in `nixPkgs` to avoid a Nix
-# store collision between two Node versions.
 NIXPACKS_NODE_VERSION = "22"
 
-[phases.setup]
-# Extend the provider defaults with explicitly pinned PHP 8.4, Composer,
-# and the PHP extensions Laravel + the SQLite/MySQL/Postgres drivers need
-# at runtime. (Node is handled via NIXPACKS_NODE_VERSION above.)
-nixPkgs = [
-    "...",
-    "php84",
-    "php84Packages.composer",
-    "php84Extensions.bcmath",
-    "php84Extensions.ctype",
-    "php84Extensions.curl",
-    "php84Extensions.dom",
-    "php84Extensions.fileinfo",
-    "php84Extensions.filter",
-    "php84Extensions.gd",
-    "php84Extensions.iconv",
-    "php84Extensions.intl",
-    "php84Extensions.mbstring",
-    "php84Extensions.opcache",
-    "php84Extensions.openssl",
-    "php84Extensions.pcntl",
-    "php84Extensions.pdo",
-    "php84Extensions.pdo_mysql",
-    "php84Extensions.pdo_pgsql",
-    "php84Extensions.pdo_sqlite",
-    "php84Extensions.session",
-    "php84Extensions.tokenizer",
-    "php84Extensions.xml",
-    "php84Extensions.zip",
-]
-
 [phases.install]
-# `composer install` runs first so that `php artisan` is available for any
-# subsequent commands. `npm ci` is faster and reproducible compared to `npm install`.
+# `composer install` first so `php artisan` is available downstream.
+# `npm ci` for reproducible installs.
 cmds = [
     "composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist",
     "npm ci --no-audit --no-fund",
 ]
 
 [phases.build]
-# Vite must build before view:cache (so the manifest exists). storage:link is
-# tolerant of an existing symlink. config/route/view/event caches are safe:
-# all HTTP routes use [Controller, 'method'] form (no closures).
+# Vite must build before view:cache (so the manifest exists). storage:link
+# is tolerant of an existing symlink. config/route/view/event caches are
+# safe: every HTTP route uses [Controller, 'method'] form (no closures).
 cmds = [
     "npm run build",
     "php artisan storage:link || true",
@@ -71,6 +47,6 @@ cmds = [
 [start]
 # Run migrations on every boot, kick off a single queue worker in the
 # background (Fortify uses queues for password-reset / 2FA / team invites),
-# then hand off to php-fpm in the foreground so nginx (managed by the Laravel
-# provider) can talk to it.
+# then hand off to php-fpm in the foreground so the provider's nginx can
+# proxy to it.
 cmd = "php artisan migrate --force --no-interaction && (php artisan queue:work --sleep=3 --tries=3 --timeout=60 &) && php-fpm -F"
