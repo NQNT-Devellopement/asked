@@ -1,0 +1,52 @@
+/.phpunit.cache
+/bootstrap/ssr
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+# Storage runtime (also covered by per-folder .gitignore inside each subdir)
+/storage/app/private/*
+!/storage/app/private/.gitignore
+/storage/app/public/*
+!/storage/app/public/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+# Wayfinder generated TypeScript (regenerated on build)
+/resources/js/actions
+/resources/js/routes
+/resources/js/wayfinder
+/vendor
+.DS_Store
+# Environment files — never commit real secrets
+.env
+.env.backup
+.env.production
+.env.*.local
+.phpactor.json
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/auth.json
+# Editor / IDE
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+# Editor swap files
+*.swp
+# Local SQLite database (also covered by database/.gitignore)
+/database/database.sqlite
+/database/*.sqlite-journal

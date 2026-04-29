@@ -1,0 +1,75 @@
+<?php
+
+return [
+    'title' => 'Personnaliser',
+    'masthead' => [
+        'eyebrow' => 'La salle de presse',
+        'eyebrow_section' => 'Personnaliser',
+        'title_lead' => 'Définissez l’allure de',
+        'description' => 'Choisissez une mise en page. Choisissez un papier. Choisissez un accent. La page publique se réhabille immédiatement.',
+    ],
+    'sections' => [
+        'copy_eyebrow' => '01 — Texte',
+        'copy_title' => 'Les mots de la couverture',
+        'copy_description' => 'Le nom de l’équipe, un titre principal facultatif et une accroche facultative. Laissez les champs facultatifs vides pour conserver les valeurs éditoriales par défaut.',
+        'layout_eyebrow' => '02 — Mise en page',
+        'layout_title' => 'Choisissez un modèle',
+        'layout_description' => 'Trois directions éditoriales. Vous pouvez en changer à tout moment.',
+        'theme_eyebrow' => '03 — Thème',
+        'theme_title' => 'Donnez le ton',
+        'theme_description' => 'Couleur d’accent et type de papier. Appliquées à toute la page publique.',
+        'preview_eyebrow' => 'Aperçu en direct',
+        'preview_title' => 'Ce que voient vos lecteurs',
+    ],
+    'slug' => [
+        'checking' => 'Vérification de la disponibilité…',
+        'unchanged' => 'URL publique : /:slug',
+        'available' => '/:slug est disponible',
+        'taken' => '/:base est déjà pris — votre URL sera /:slug',
+        'rename_warning' => 'L’enregistrement modifiera votre URL publique. Les liens existants vers /:current seront redirigés.',
+    ],
+    'fields' => [
+        'team_name_label' => 'Nom de l’équipe',
+        'team_name_help' => 'Utilisé partout — barre latérale, tableau de bord, page publique.',
+        'headline_label' => 'Remplacement du titre principal',
+        'headline_help' => 'Facultatif. Remplace le H1 sur la page publique.',
+        'tagline_label' => 'Accroche',
+        'tagline_help' => 'Facultatif. Affichée sous le titre principal.',
+        'tagline_placeholder' => 'Posez une question. La réponse arrive en direct — en vidéo, en stream, en publication.',
+    ],
+    'actions' => [
+        'save_changes' => 'Enregistrer les modifications',
+        'saving' => 'Enregistrement…',
+        'discard' => 'Annuler',
+        'saved' => 'Enregistré',
+    ],
+    'preview' => [
+        'aria_label' => 'Aperçu en direct',
+        'device_aria' => 'Appareil d’aperçu',
+        'desktop' => 'bureau',
+        'mobile' => 'mobile',
+        'description' => 'Questions d’exemple affichées à titre de mise en page uniquement. Utilisez les commandes de zoom pour inspecter les points de rupture rendus.',
+        'zoom_in' => 'Agrandir',
+        'zoom_out' => 'Réduire',
+        'fit' => 'Adapter',
+        'zoom_value' => ':percent%',
+    ],
+    'toast' => [
+        'invalid_accent' => 'La couleur d’accent doit être un hexadécimal valide (ex. #c97a2b).',
+        'saved' => 'Enregistré. Vos lecteurs le verront à leur prochaine visite.',
+        'failed' => 'Impossible d’enregistrer. Vérifiez le formulaire et réessayez.',
+    ],
+    'template_picker' => [
+        'fieldset_legend' => 'Choisir un modèle de mise en page',
+    ],
+    'theme_picker' => [
+        'accent_label' => 'Accent',
+        'accent_custom' => 'Personnalisé',
+        'accent_hex_label' => 'Hex personnalisé',
+        'background_label' => 'Arrière-plan',
+        'background_legend' => 'Choisir un arrière-plan',
+    ],
+    'flash' => [
+        'updated' => 'Page personnalisée.',
+    ],
+];

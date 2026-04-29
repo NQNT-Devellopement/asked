@@ -1,0 +1,104 @@
+import { Form, Head, setLayoutProps } from '@inertiajs/react';
+import { ArrowUpRight } from 'lucide-react';
+import InputError from '@/components/input-error';
+import PasswordInput from '@/components/password-input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/lib/i18n';
+import { update } from '@/routes/password';
+
+type Props = {
+    token: string;
+    email: string;
+};
+
+export default function ResetPassword({ token, email }: Props) {
+    const { t } = useTranslate();
+
+    setLayoutProps({
+        title: t('auth.reset_password.page_title'),
+        description: t('auth.reset_password.page_description'),
+    });
+
+    return (
+        <>
+            <Head title={t('auth.reset_password.head_title')} />
+
+            <Form
+                {...update.form()}
+                transform={(data) => ({ ...data, token, email })}
+                resetOnSuccess={['password', 'password_confirmation']}
+                className="flex flex-col gap-7"
+            >
+                {({ processing, errors }) => (
+                    <>
+                        <div className="grid gap-7">
+                            <div className="grid gap-2">
+                                <Label htmlFor="email">
+                                    {t('auth.reset_password.email_label')}
+                                </Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    name="email"
+                                    autoComplete="email"
+                                    value={email}
+                                    readOnly
+                                />
+                                <InputError message={errors.email} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="password">
+                                    {t('auth.reset_password.password_label')}
+                                </Label>
+                                <PasswordInput
+                                    id="password"
+                                    name="password"
+                                    autoComplete="new-password"
+                                    autoFocus
+                                    placeholder={t(
+                                        'auth.reset_password.password_placeholder',
+                                    )}
+                                />
+                                <InputError message={errors.password} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="password_confirmation">
+                                    {t(
+                                        'auth.reset_password.password_confirmation_label',
+                                    )}
+                                </Label>
+                                <PasswordInput
+                                    id="password_confirmation"
+                                    name="password_confirmation"
+                                    autoComplete="new-password"
+                                    placeholder={t(
+                                        'auth.reset_password.password_confirmation_placeholder',
+                                    )}
+                                />
+                                <InputError
+                                    message={errors.password_confirmation}
+                                />
+                            </div>
+
+                            <Button
+                                type="submit"
+                                className="mt-2 w-full"
+                                disabled={processing}
+                                data-test="reset-password-button"
+                            >
+                                {processing && <Spinner />}
+                                {t('auth.reset_password.submit')}
+                                <ArrowUpRight className="size-4" />
+                            </Button>
+                        </div>
+                    </>
+                )}
+            </Form>
+        </>
+    );
+}

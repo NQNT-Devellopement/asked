@@ -1,0 +1,75 @@
+<?php
+
+return [
+    'title' => 'Customize',
+    'masthead' => [
+        'eyebrow' => 'The Press Room',
+        'eyebrow_section' => 'Customize',
+        'title_lead' => 'Set the look of',
+        'description' => 'Pick a layout. Pick a paper. Pick an accent. The public page redresses immediately.',
+    ],
+    'sections' => [
+        'copy_eyebrow' => '01 — Copy',
+        'copy_title' => 'Words on the cover',
+        'copy_description' => 'The team name, an optional headline, and an optional tagline. Leave the optional fields blank to keep the editorial defaults.',
+        'layout_eyebrow' => '02 — Layout',
+        'layout_title' => 'Pick a template',
+        'layout_description' => 'Three editorial directions. You can change this any time.',
+        'theme_eyebrow' => '03 — Theme',
+        'theme_title' => 'Set the mood',
+        'theme_description' => 'Accent color and paper stock. Apply across the public page.',
+        'preview_eyebrow' => 'Live preview',
+        'preview_title' => 'What your readers see',
+    ],
+    'fields' => [
+        'team_name_label' => 'Team name',
+        'team_name_help' => 'Used everywhere — sidebar, dashboard, public page.',
+        'headline_label' => 'Headline override',
+        'headline_help' => 'Optional. Replaces the H1 on the public page.',
+        'tagline_label' => 'Tagline',
+        'tagline_help' => 'Optional. Shown under the headline.',
+        'tagline_placeholder' => 'Drop a question. It gets answered live — in a video, on stream, on a post.',
+    ],
+    'slug' => [
+        'checking' => 'Checking availability…',
+        'unchanged' => 'Public URL: /:slug',
+        'available' => '/:slug is available',
+        'taken' => '/:base is taken — your URL will be /:slug',
+        'rename_warning' => 'Saving will change your public URL. Existing links to /:current will redirect.',
+    ],
+    'actions' => [
+        'save_changes' => 'Save changes',
+        'saving' => 'Saving…',
+        'discard' => 'Discard',
+        'saved' => 'Saved',
+    ],
+    'preview' => [
+        'aria_label' => 'Live preview',
+        'device_aria' => 'Preview device',
+        'desktop' => 'desktop',
+        'mobile' => 'mobile',
+        'description' => 'Sample questions shown for layout only. Use the zoom controls to inspect the rendered breakpoints.',
+        'zoom_in' => 'Zoom in',
+        'zoom_out' => 'Zoom out',
+        'fit' => 'Fit',
+        'zoom_value' => ':percent%',
+    ],
+    'toast' => [
+        'invalid_accent' => 'Accent color must be a valid hex (e.g. #c97a2b).',
+        'saved' => 'Saved. Your readers will see it next visit.',
+        'failed' => 'Could not save. Check the form and try again.',
+    ],
+    'template_picker' => [
+        'fieldset_legend' => 'Choose a layout template',
+    ],
+    'theme_picker' => [
+        'accent_label' => 'Accent',
+        'accent_custom' => 'Custom',
+        'accent_hex_label' => 'Custom hex',
+        'background_label' => 'Background',
+        'background_legend' => 'Choose a background',
+    ],
+    'flash' => [
+        'updated' => 'Page customized.',
+    ],
+];
