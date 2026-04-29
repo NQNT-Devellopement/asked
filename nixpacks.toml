@@ -9,10 +9,17 @@
 # - https://nixpacks.com/docs/providers/php
 # - https://nixpacks.com/docs/configuration/file
 
+[variables]
+# The Laravel provider invokes the Node provider, which defaults to Node 18.
+# Vite 8 + @inertiajs/vite need Node 20+, so override here. We keep this as
+# a variable rather than pinning `nodejs_22` in `nixPkgs` to avoid a Nix
+# store collision between two Node versions.
+NIXPACKS_NODE_VERSION = "22"
+
 [phases.setup]
 # Extend the provider defaults with explicitly pinned PHP 8.4, Composer,
-# Node 22, and the PHP extensions Laravel + the SQLite/MySQL/Postgres
-# drivers and our packages need at runtime.
+# and the PHP extensions Laravel + the SQLite/MySQL/Postgres drivers need
+# at runtime. (Node is handled via NIXPACKS_NODE_VERSION above.)
 nixPkgs = [
     "...",
     "php84",
@@ -38,7 +45,6 @@ nixPkgs = [
     "php84Extensions.tokenizer",
     "php84Extensions.xml",
     "php84Extensions.zip",
-    "nodejs_22",
 ]
 
 [phases.install]
