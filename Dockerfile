@@ -19,10 +19,25 @@
 # ============================================================================
 
 # ---------- Stage 1 — Build ------------------------------------------------
-FROM composer:2.7 AS builder
+# We use php:8.4-cli-alpine (matches the runtime PHP version) and install
+# composer + Node manually. The official `composer` Docker image still ships
+# PHP 8.3, which is incompatible with Laravel 13.7's locked Symfony 8.0.8
+# packages (they require PHP >= 8.4).
+FROM php:8.4-cli-alpine AS builder
 
-# Composer image is alpine-based. Add Node 22 for Vite 8 / @inertiajs/vite.
-RUN apk add --no-cache nodejs npm git
+# Add Node 22 (Vite 8 + @inertiajs/vite need Node 20+), git for some Composer
+# packages, unzip as composer's zip-extractor fallback, plus the runtime libs
+# + build toolchain needed to compile the PHP extensions composer relies on
+# (mbstring + zip). Install composer last via the official installer.
+RUN apk add --no-cache \
+        bash git unzip curl \
+        nodejs npm \
+        oniguruma-dev libzip-dev \
+        autoconf g++ make pkgconf \
+    && docker-php-ext-install -j"$(nproc)" mbstring zip \
+    && curl -sS https://getcomposer.org/installer \
+        | php -- --install-dir=/usr/local/bin --filename=composer \
+    && composer --version
 
 WORKDIR /app
 
