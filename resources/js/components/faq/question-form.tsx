@@ -159,7 +159,7 @@ export function QuestionForm({ teamSlug, teamName }: Props) {
                         }
                         placeholder={t('faq.form.author_placeholder')}
                         aria-invalid={Boolean(errors.author_name)}
-                        className="h-11 rounded-xl bg-background/70 text-base focus-visible:border-[var(--accent-ink)] focus-visible:ring-[var(--accent-ink)]/30"
+                        className="h-11 rounded-xl bg-background/70 text-base text-foreground placeholder:text-muted-foreground/70 focus-visible:border-[var(--accent-ink)] focus-visible:ring-[var(--accent-ink)]/30"
                     />
                     <InputError message={errors.author_name} />
                 </div>

@@ -25,13 +25,14 @@ test('owners can bulk reorder questions and reassign them to lists', function ()
     $second = Question::factory()->approved()->create(['team_id' => $team->id, 'position' => 1]);
 
     $this->actingAs($owner)
+        ->from(route('questions.board', $team))
         ->post(route('questions.reorder', $team), [
             'items' => [
                 ['id' => $first->id, 'list_id' => $list->id, 'position' => 5],
                 ['id' => $second->id, 'list_id' => null, 'position' => 9],
             ],
         ])
-        ->assertNoContent();
+        ->assertRedirect(route('questions.board', $team));
 
     expect($first->fresh()->question_list_id)->toEqual($list->id);
     expect($first->fresh()->position)->toEqual(5);

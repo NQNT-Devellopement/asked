@@ -135,10 +135,11 @@ test('owners can reorder question lists', function () {
     $c = QuestionList::factory()->create(['team_id' => $team->id, 'position' => 2]);
 
     $this->actingAs($owner)
+        ->from(route('questions.board', $team))
         ->post(route('questions.lists.reorder', $team), [
             'ids' => [$c->id, $a->id, $b->id],
         ])
-        ->assertNoContent();
+        ->assertRedirect(route('questions.board', $team));
 
     expect($c->fresh()->position)->toEqual(0);
     expect($a->fresh()->position)->toEqual(1);

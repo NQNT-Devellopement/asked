@@ -9,7 +9,6 @@ use App\Http\Requests\Questions\UpdateQuestionListRequest;
 use App\Models\QuestionList;
 use App\Models\Team;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -65,9 +64,12 @@ class QuestionListController extends Controller
     }
 
     /**
-     * Reorder all question lists for the team.
+     * Reorder all question lists for the team. Returns `back()` rather
+     * than 204 No Content so Inertia v3 doesn't treat the response as a
+     * non-Inertia render and surface an empty fullscreen modal. The
+     * frontend already passes `only: []` so no props are refreshed.
      */
-    public function reorder(ReorderQuestionListsRequest $request, Team $current_team): Response
+    public function reorder(ReorderQuestionListsRequest $request, Team $current_team): RedirectResponse
     {
         /** @var array<int, int> $ids */
         $ids = $request->validated('ids');
@@ -81,7 +83,7 @@ class QuestionListController extends Controller
             }
         });
 
-        return response()->noContent();
+        return back();
     }
 
     /**

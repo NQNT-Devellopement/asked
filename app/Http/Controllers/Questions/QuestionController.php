@@ -15,7 +15,6 @@ use App\Models\Team;
 use App\Support\QuestionPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -191,9 +190,13 @@ class QuestionController extends Controller
     }
 
     /**
-     * Bulk reorder questions and re-assign them to lists.
+     * Bulk reorder questions and re-assign them to lists. The frontend uses
+     * `router.post(..., { only: [] })` so no props are refreshed; we just
+     * need to return an Inertia-compatible response (a 204 confuses Inertia
+     * v3's non-Inertia-response detector and surfaces an empty fullscreen
+     * modal — `back()` keeps the user on the same page with no prop churn).
      */
-    public function reorder(ReorderQuestionsRequest $request, Team $current_team): Response
+    public function reorder(ReorderQuestionsRequest $request, Team $current_team): RedirectResponse
     {
         /** @var array<int, array{id: int, list_id: ?int, position: int}> $items */
         $items = $request->validated('items');
@@ -218,7 +221,7 @@ class QuestionController extends Controller
             }
         });
 
-        return response()->noContent();
+        return back();
     }
 
     /**
