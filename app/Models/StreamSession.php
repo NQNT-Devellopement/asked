@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 #[Fillable([
@@ -41,6 +42,25 @@ class StreamSession extends Model
         static::creating(function (StreamSession $session): void {
             if (empty($session->secret_token)) {
                 $session->secret_token = Str::random(64);
+            }
+        });
+
+        // Bust the overlay JSON cache when the streamer mutates anything that
+        // affects what viewers see. We exclude `last_polled_at` because the
+        // cache miss path itself bumps that timestamp — invalidating on it
+        // would defeat the cache.
+        static::saved(function (StreamSession $session): void {
+            $relevant = ['current_question_id', 'overlay_preset', 'is_active'];
+            if ($session->wasChanged($relevant) && ! empty($session->secret_token)) {
+                Cache::forget("overlay-state:{$session->secret_token}");
+            }
+        });
+
+        // Hard delete + soft delete also bust the cache so a deactivated
+        // session can't keep serving its last live payload.
+        static::deleted(function (StreamSession $session): void {
+            if (! empty($session->secret_token)) {
+                Cache::forget("overlay-state:{$session->secret_token}");
             }
         });
     }

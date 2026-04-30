@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StreamSession;
 use App\Support\QuestionPresenter;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -40,26 +41,42 @@ class OverlayController extends Controller
     /**
      * Return the current overlay state as JSON. Polled by the overlay client
      * roughly every 1.5 seconds.
+     *
+     * The payload is cached by token for 1 second so that N viewers of the
+     * same stream collapse to ~1 DB read per second instead of N. The cache
+     * miss path also opportunistically updates `last_polled_at` (so writes
+     * happen at most once/sec per token rather than once per poll).
+     *
+     * Token validation runs OUTSIDE the cache so an invalid / inactive
+     * session always 404s and never caches a "live" payload it shouldn't.
      */
     public function state(string $token): JsonResponse
     {
         $session = $this->resolveSession($token);
 
-        $session->forceFill(['last_polled_at' => now()])->saveQuietly();
+        $payload = Cache::remember(
+            "overlay-state:{$token}",
+            now()->addSecond(),
+            function () use ($session): array {
+                $session->loadMissing(['team', 'currentQuestion.questionList:id,name,color']);
 
-        $session->loadMissing(['team', 'currentQuestion.questionList:id,name,color']);
+                $session->forceFill(['last_polled_at' => now()])->saveQuietly();
 
-        return response()->json([
-            'preset' => $session->overlay_preset?->value,
-            'team' => [
-                'name' => $session->team->name,
-                'slug' => $session->team->slug,
-            ],
-            'current_question' => $session->currentQuestion
-                ? QuestionPresenter::toArray($session->currentQuestion)
-                : null,
-            'version' => $this->stateVersion($session),
-        ]);
+                return [
+                    'preset' => $session->overlay_preset?->value,
+                    'team' => [
+                        'name' => $session->team->name,
+                        'slug' => $session->team->slug,
+                    ],
+                    'current_question' => $session->currentQuestion
+                        ? QuestionPresenter::toArray($session->currentQuestion)
+                        : null,
+                    'version' => $this->stateVersion($session),
+                ];
+            },
+        );
+
+        return response()->json($payload);
     }
 
     /**

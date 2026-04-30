@@ -8,6 +8,7 @@ use App\Models\Question;
 use App\Support\Translations;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -52,11 +53,18 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'currentTeam' => fn () => $user?->currentTeam ? $user->toUserTeam($user->currentTeam) : null,
             'teams' => fn () => $user?->toUserTeams(includeCurrent: true) ?? [],
-            'questionStats' => fn () => $user?->currentTeam ? [
-                'pendingCount' => Question::where('team_id', $user->currentTeam->id)
-                    ->where('status', QuestionStatus::Pending)
-                    ->count(),
-            ] : null,
+            // Cache the pending-count for ~10s — the sidebar badge can lag a
+            // few seconds with no UX impact, but on a busy app every request
+            // would otherwise issue this `count(*)` query against `questions`.
+            'questionStats' => fn () => $user?->currentTeam ? Cache::remember(
+                "team:{$user->currentTeam->id}:pendingCount",
+                now()->addSeconds(10),
+                fn (): array => [
+                    'pendingCount' => Question::where('team_id', $user->currentTeam->id)
+                        ->where('status', QuestionStatus::Pending)
+                        ->count(),
+                ],
+            ) : null,
             'locale' => $locale,
             'availableLocales' => collect(Locale::supported())
                 ->map(fn (Locale $locale): array => [
