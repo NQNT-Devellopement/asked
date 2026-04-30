@@ -89,13 +89,15 @@ test('the state endpoint is 404 for unknown or inactive tokens', function () {
 });
 
 test('the state endpoint is throttled past the limit', function () {
+    config(['asked.throttle.overlay_poll' => 5]);
+
     $team = Team::factory()->create();
     $session = StreamSession::factory()->create([
         'team_id' => $team->id,
         'created_by_user_id' => User::factory()->create()->id,
     ]);
 
-    for ($i = 0; $i < 600; $i++) {
+    for ($i = 0; $i < 5; $i++) {
         $this->getJson(route('overlay.state', ['token' => $session->secret_token]))
             ->assertOk();
     }

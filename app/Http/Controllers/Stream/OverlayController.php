@@ -42,27 +42,19 @@ class OverlayController extends Controller
      * Return the current overlay state as JSON. Polled by the overlay client
      * roughly every 1.5 seconds.
      *
-     * The payload is cached by token using a stale-while-revalidate window so
-     * that N viewers of the same stream collapse to ~1 DB read per second
-     * instead of N. With `Cache::flexible([1, 3], …)`:
-     *   - 0–1s after fill: serve cached value directly.
-     *   - 1–3s after fill: serve cached (stale) value AND queue a background
-     *     refresh under an atomic lock so only ONE worker recomputes — this
-     *     is the cache stampede protection for 1k+ concurrent pollers.
-     *   - 3s+ after fill: behave like remember() and recompute synchronously.
-     *
-     * 404s are cached too — keeps a flood of bad-token requests from hammering
-     * the DB. We cannot cache `null` directly because Cache::flexible treats
-     * `null` as a cache miss sentinel, so we wrap the result in an array shape
-     * `['hit' => bool, 'payload' => array|null]`.
+     * Cached by token for 1s. Under heavy load, when the entry expires up to
+     * one request per FPM worker may briefly stampede the DB query, but the
+     * lookup is indexed (secret_token) and Postgres handles the burst — we
+     * tried Cache::flexible's stale-while-revalidate but the extra Redis
+     * round-trips (lock + read + created-marker write) made things slower
+     * under real load than a plain remember() with a tiny TTL.
      */
     public function state(string $token): JsonResponse
     {
-        /** @var array{hit: bool, payload: array<string, mixed>|null} $cached */
-        $cached = Cache::flexible(
+        $payload = Cache::remember(
             "overlay-state:{$token}",
-            [1, 3],
-            function () use ($token): array {
+            now()->addSecond(),
+            function () use ($token): ?array {
                 $session = StreamSession::query()
                     ->where('secret_token', $token)
                     ->where('is_active', true)
@@ -70,33 +62,28 @@ class OverlayController extends Controller
                     ->first();
 
                 if ($session === null) {
-                    return ['hit' => false, 'payload' => null];
+                    return null;
                 }
 
-                // Bump last_polled_at on cache (re)compute only — at most a
-                // handful of times per second per token, not on every poll.
                 $session->forceFill(['last_polled_at' => now()])->saveQuietly();
 
                 return [
-                    'hit' => true,
-                    'payload' => [
-                        'preset' => $session->overlay_preset?->value,
-                        'team' => [
-                            'name' => $session->team->name,
-                            'slug' => $session->team->slug,
-                        ],
-                        'current_question' => $session->currentQuestion
-                            ? QuestionPresenter::toArray($session->currentQuestion)
-                            : null,
-                        'version' => $this->stateVersion($session),
+                    'preset' => $session->overlay_preset?->value,
+                    'team' => [
+                        'name' => $session->team->name,
+                        'slug' => $session->team->slug,
                     ],
+                    'current_question' => $session->currentQuestion
+                        ? QuestionPresenter::toArray($session->currentQuestion)
+                        : null,
+                    'version' => $this->stateVersion($session),
                 ];
             },
         );
 
-        abort_if($cached['hit'] === false, 404);
+        abort_if($payload === null, 404);
 
-        return response()->json($cached['payload']);
+        return response()->json($payload);
     }
 
     /**
