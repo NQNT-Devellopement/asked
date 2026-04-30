@@ -42,18 +42,22 @@ class OverlayController extends Controller
      * Return the current overlay state as JSON. Polled by the overlay client
      * roughly every 1.5 seconds.
      *
-     * Cached by token for 1s. Under heavy load, when the entry expires up to
-     * one request per FPM worker may briefly stampede the DB query, but the
-     * lookup is indexed (secret_token) and Postgres handles the burst — we
-     * tried Cache::flexible's stale-while-revalidate but the extra Redis
-     * round-trips (lock + read + created-marker write) made things slower
-     * under real load than a plain remember() with a tiny TTL.
+     * Cached by token for 5 seconds. The original 1s TTL caused thundering-
+     * herd stampedes at 500+ concurrent pollers — every second N workers
+     * simultaneously hit Postgres for the same row, FPM queue overflowed,
+     * 5xx tail exploded. 5s is well within OBS-overlay UX tolerance (a
+     * question appearing 5 seconds late is invisible to viewers) and cuts
+     * stampede frequency 5×.
+     *
+     * The model `saved` hook on StreamSession explicitly busts this key
+     * when current_question_id / overlay_preset / is_active changes, so
+     * moderator actions still feel instant despite the longer TTL.
      */
     public function state(string $token): JsonResponse
     {
         $payload = Cache::remember(
             "overlay-state:{$token}",
-            now()->addSecond(),
+            now()->addSeconds(5),
             function () use ($token): ?array {
                 $session = StreamSession::query()
                     ->where('secret_token', $token)
