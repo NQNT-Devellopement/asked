@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
 #[Fillable([
     'team_id',
@@ -30,6 +31,47 @@ class Question extends Model
 {
     /** @use HasFactory<QuestionFactory> */
     use HasFactory;
+
+    /**
+     * Bust the per-team `pendingCount` cache when a question is written or
+     * deleted in a way that affects the count. The cache key is the same one
+     * read by `HandleInertiaRequests::share()` for the sidebar badge.
+     */
+    protected static function booted(): void
+    {
+        $bust = function (Question $question): void {
+            // `getOriginal('status')` is the pre-write value; `status` (cast)
+            // is the post-write value. Either side touching `Pending` means
+            // the cached count is stale.
+            $original = $question->getOriginal('status');
+            $current = $question->status;
+
+            $pendingValue = QuestionStatus::Pending->value;
+
+            $touchesPending = $question->wasRecentlyCreated
+                || $current === QuestionStatus::Pending
+                || $original === QuestionStatus::Pending
+                || $original === $pendingValue;
+
+            if (! $touchesPending) {
+                return;
+            }
+
+            // `team_id` may change in pathological cases (e.g. moving a
+            // question between teams) — invalidate both sides if it did.
+            $teamIds = array_unique(array_filter([
+                $question->team_id,
+                $question->getOriginal('team_id'),
+            ]));
+
+            foreach ($teamIds as $teamId) {
+                Cache::forget("team:{$teamId}:pendingCount");
+            }
+        };
+
+        static::saved($bust);
+        static::deleted($bust);
+    }
 
     /**
      * Get the team that owns the question.

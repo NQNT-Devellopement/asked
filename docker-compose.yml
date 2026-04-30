@@ -23,6 +23,10 @@ services:
     image: asked
     container_name: asked-app
     restart: unless-stopped
+    # Resource ceilings tuned for a small VPS (≈4GB RAM, 2-4 vCPU). Bump
+    # these in the Dokploy UI (or via an override) on bigger instances.
+    mem_limit: 1g
+    cpus: 2.0
     # No `ports:` mapping — Dokploy's Traefik routes the domain to this
     # container via the internal Docker network on port 8080 (which the
     # Dockerfile EXPOSEs). Publishing the port to the host would clash
@@ -80,7 +84,11 @@ services:
       BROADCAST_CONNECTION: log
       FILESYSTEM_DISK: local
 
-      REDIS_CLIENT: predis
+      # phpredis (C extension) is bundled in the image and is faster than
+      # predis for high-frequency cache + session traffic. Override to
+      # `predis` only if a deploy needs the pure-PHP fallback.
+      REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
+      REDIS_PERSISTENT: ${REDIS_PERSISTENT:-true}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-asked}
@@ -113,6 +121,8 @@ services:
     image: postgres:16-alpine
     container_name: asked-db
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       POSTGRES_DB: ${DB_DATABASE:-asked}
       POSTGRES_USER: ${DB_USERNAME:-asked}
@@ -136,12 +146,19 @@ services:
     image: redis:7-alpine
     container_name: asked-redis
     restart: unless-stopped
+    mem_limit: 320m
+    cpus: 0.5
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-asked}
+    # `--maxmemory 256mb` keeps Redis comfortably under the 320m container
+    # ceiling (the rest covers fork-on-save overhead). `allkeys-lru` is
+    # right for a cache+session+queue mix — least-recently-used cache keys
+    # get evicted first when memory is tight; sessions/queue tend to be
+    # touched recently and survive.
     command:
       - sh
       - -c
-      - exec redis-server --save 60 1 --loglevel warning --requirepass "$$REDIS_PASSWORD"
+      - exec redis-server --save 60 1 --loglevel warning --requirepass "$$REDIS_PASSWORD" --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - asked-redis:/data
     healthcheck:

@@ -26,15 +26,12 @@ class Translations
      */
     public static function flatten(string $locale): array
     {
-        $directory = lang_path($locale);
-
-        // Version the cache key by the directory's last modification time so a
-        // deploy with edited / added / removed lang files automatically misses
-        // the old cache without needing a manual `cache:clear`.
-        $version = File::isDirectory($directory) ? filemtime($directory) : 0;
-
+        // Version the cache key by the locale directory's last modification
+        // time so a deploy with edited / added / removed lang files
+        // automatically misses the old cache without needing a manual
+        // `cache:clear`.
         return Cache::remember(
-            "translations:flatten:{$locale}:{$version}",
+            self::cacheKey($locale),
             now()->addDay(),
             fn (): array => self::buildFlat($locale),
         );
@@ -43,18 +40,34 @@ class Translations
     /**
      * Forget cached dictionaries for one locale (or all if null). Called by
      * deploy scripts and any code path that touches lang/* files at runtime.
+     *
+     * The cache key is versioned by the locale directory's `filemtime`, so
+     * we recompute the same suffix here. Otherwise this would silently miss
+     * the real key and leave stale translations in cache.
      */
     public static function forget(?string $locale = null): void
     {
         if ($locale !== null) {
-            Cache::forget("translations:flatten:{$locale}");
+            Cache::forget(self::cacheKey($locale));
 
             return;
         }
 
         foreach (File::directories(lang_path()) as $dir) {
-            Cache::forget('translations:flatten:'.basename($dir));
+            Cache::forget(self::cacheKey(basename($dir)));
         }
+    }
+
+    /**
+     * Build the versioned cache key for a locale, matching the key written
+     * by `flatten()`.
+     */
+    protected static function cacheKey(string $locale): string
+    {
+        $directory = lang_path($locale);
+        $version = File::isDirectory($directory) ? filemtime($directory) : 0;
+
+        return "translations:flatten:{$locale}:{$version}";
     }
 
     /**

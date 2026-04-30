@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\Locale;
 use App\Enums\QuestionStatus;
 use App\Models\Question;
+use App\Models\User;
 use App\Support\Translations;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -44,11 +45,16 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
         $locale = App::getLocale();
 
+        // Pre-load memberships (and their teams) once. The `HasTeams` trait
+        // resolves `teamRole` / `belongsToTeam` from this in-memory relation,
+        // so the `currentTeam` + `teams` props below avoid a per-team query.
+        $user?->loadMissing('teamMemberships.team');
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $user,
+                'user' => $this->shareableUser($user),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'currentTeam' => fn () => $user?->currentTeam ? $user->toUserTeam($user->currentTeam) : null,
@@ -73,6 +79,32 @@ class HandleInertiaRequests extends Middleware
                 ])
                 ->all(),
             'translations' => fn () => Translations::flatten($locale),
+        ];
+    }
+
+    /**
+     * Build a minimal payload for `auth.user` containing only the fields the
+     * frontend actually reads. Shipping the full Eloquent model on every
+     * Inertia request was wasted bytes (and risked leaking schema additions
+     * unintentionally).
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function shareableUser(?User $user): ?array
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at,
+            'current_team_id' => $user->current_team_id,
+            'locale' => $user->locale,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
         ];
     }
 }

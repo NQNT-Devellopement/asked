@@ -76,13 +76,16 @@ RUN apk add --no-cache \
         $PHPIZE_DEPS \
         icu-dev libpng-dev libjpeg-turbo-dev libzip-dev \
         postgresql-dev libxml2-dev oniguruma-dev \
+        linux-headers \
     && docker-php-ext-configure gd --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath gd intl opcache pcntl \
-        pdo pdo_mysql pdo_pgsql \
+        pdo pdo_pgsql \
         zip \
+    && printf "\n" | pecl install redis \
+    && docker-php-ext-enable redis \
     && apk del .build-deps \
-    && rm -rf /var/cache/apk/* /tmp/*
+    && rm -rf /var/cache/apk/* /tmp/* /usr/local/lib/php/test /usr/local/lib/php/doc
 
 # pdo_sqlite ships in php:alpine via the `sqlite3` extension preloaded;
 # verify it's enabled (no compile needed).
@@ -98,12 +101,28 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 WORKDIR /app
 
-# Copy the built app from the builder stage. We deliberately re-copy after
-# `COPY . .` below to make sure the optimized vendor + public/build win over
-# whatever might be lingering in the source tree.
-COPY --chown=www-data:www-data . .
-COPY --from=builder --chown=www-data:www-data /app/vendor ./vendor
-COPY --from=builder --chown=www-data:www-data /app/public/build ./public/build
+# Copy the runtime source tree explicitly. We avoid `COPY . .` so tests/,
+# node_modules/, .git/, .claude/, dev configs, and other non-runtime paths
+# never make it into the production image (the .dockerignore already
+# filters these, but listing each path is belt-and-braces and keeps the
+# layer cache predictable).
+COPY --chown=www-data:www-data app             ./app
+COPY --chown=www-data:www-data bootstrap       ./bootstrap
+COPY --chown=www-data:www-data config          ./config
+COPY --chown=www-data:www-data database        ./database
+COPY --chown=www-data:www-data lang            ./lang
+COPY --chown=www-data:www-data public          ./public
+COPY --chown=www-data:www-data resources/views ./resources/views
+COPY --chown=www-data:www-data routes          ./routes
+COPY --chown=www-data:www-data storage         ./storage
+COPY --chown=www-data:www-data artisan         ./artisan
+COPY --chown=www-data:www-data composer.json composer.lock ./
+
+# Built artifacts from the builder stage. These overwrite anything copied
+# above (e.g. an empty bootstrap/cache placeholder gets replaced with the
+# optimized package manifest, public/build picks up the Vite output).
+COPY --from=builder --chown=www-data:www-data /app/vendor         ./vendor
+COPY --from=builder --chown=www-data:www-data /app/public/build   ./public/build
 COPY --from=builder --chown=www-data:www-data /app/bootstrap/cache ./bootstrap/cache
 
 # Storage + cache need to be writable by www-data.

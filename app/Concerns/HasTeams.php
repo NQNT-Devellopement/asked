@@ -18,6 +18,15 @@ use Illuminate\Support\Facades\URL;
 trait HasTeams
 {
     /**
+     * Per-request memoization of resolved roles, keyed by team id. Cleared
+     * implicitly when the user model is re-instantiated; this lives only as
+     * long as the trait-using model instance does.
+     *
+     * @var array<int, ?TeamRole>
+     */
+    private array $teamRoleCache = [];
+
+    /**
      * Get all of the teams the user belongs to.
      *
      * @return BelongsToMany<Team, $this>
@@ -98,7 +107,11 @@ trait HasTeams
      */
     public function belongsToTeam(Team $team): bool
     {
-        return $this->teams()->where('teams.id', $team->id)->exists();
+        if ($this->relationLoaded('teamMemberships')) {
+            return $this->teamMemberships->contains('team_id', $team->id);
+        }
+
+        return $this->teamMemberships()->where('team_id', $team->id)->exists();
     }
 
     /**
@@ -122,21 +135,40 @@ trait HasTeams
      */
     public function teamRole(Team $team): ?TeamRole
     {
-        return $this->teamMemberships()
-            ->where('team_id', $team->id)
-            ->first()
-            ?->role;
+        if (array_key_exists($team->id, $this->teamRoleCache)) {
+            return $this->teamRoleCache[$team->id];
+        }
+
+        if ($this->relationLoaded('teamMemberships')) {
+            $role = $this->teamMemberships
+                ->firstWhere('team_id', $team->id)
+                ?->role;
+        } else {
+            $role = $this->teamMemberships()
+                ->where('team_id', $team->id)
+                ->first()
+                ?->role;
+        }
+
+        return $this->teamRoleCache[$team->id] = $role;
     }
 
     /**
      * Get the user's teams as a collection of UserTeam objects.
      *
+     * Loads `teamMemberships.team` once so the role lookups inside
+     * `toUserTeam` resolve from in-memory memberships instead of issuing
+     * one query per team.
+     *
      * @return Collection<int, UserTeam>
      */
     public function toUserTeams(bool $includeCurrent = false): Collection
     {
-        return $this->teams()
-            ->get()
+        $this->loadMissing('teamMemberships.team');
+
+        return $this->teamMemberships
+            ->map(fn (Membership $membership): ?Team => $membership->team)
+            ->filter()
             ->map(fn (Team $team) => ! $includeCurrent && $this->isCurrentTeam($team) ? null : $this->toUserTeam($team))
             ->filter()
             ->values();
