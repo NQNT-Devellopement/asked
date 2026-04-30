@@ -64,8 +64,15 @@ services:
       # --- Reverse proxy ---
       TRUSTED_PROXIES: "*"
 
-      # --- Sessions (in Redis) ---
-      SESSION_DRIVER: redis
+      # --- Sessions ---
+      # Cookie driver: payload lives encrypted in the client cookie, zero
+      # backend round-trip per request. Removes the per-request Redis
+      # GET+SET that was the public-page tail under load (200 VUs ⇒ 400
+      # session ops/s competing with cache + queue traffic on the same
+      # Redis instance). Trade-off: max 4KB of session data, which is
+      # plenty for our token + flash + a few user prefs.
+      SESSION_DRIVER: ${SESSION_DRIVER:-cookie}
+      SESSION_ENCRYPT: ${SESSION_ENCRYPT:-true}
       SESSION_LIFETIME: 120
       SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
       SESSION_DOMAIN: ${SESSION_DOMAIN:-}
