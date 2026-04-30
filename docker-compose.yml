@@ -69,7 +69,7 @@ services:
       REDIS_CLIENT: predis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-asked}
 
       # --- Mail (defaults to log; switch to smtp + creds in Dokploy) ---
       MAIL_MAILER: ${MAIL_MAILER:-log}
@@ -114,23 +114,28 @@ services:
   # -------------------------------------------------------------------------
   # Redis — cache + sessions + queue
   # -------------------------------------------------------------------------
+  # Always password-protected (defaults to `asked` for local dev — set
+  # REDIS_PASSWORD in production to override). The shell wrapper around
+  # redis-server lets the container read the password from its env, and
+  # the healthcheck reads the same env so we don't have to hardcode it.
   redis:
     image: redis:7-alpine
     container_name: asked-redis
     restart: unless-stopped
-    command: >
-      redis-server
-      --save 60 1
-      --loglevel warning
-      ${REDIS_PASSWORD:+--requirepass}
-      ${REDIS_PASSWORD:-}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-asked}
+    command:
+      - sh
+      - -c
+      - exec redis-server --save 60 1 --loglevel warning --requirepass "$$REDIS_PASSWORD"
     volumes:
       - asked-redis:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ${REDIS_PASSWORD:+-a $$REDIS_PASSWORD} ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
-      retries: 5
+      retries: 10
+      start_period: 5s
 
 volumes:
   asked-db:
