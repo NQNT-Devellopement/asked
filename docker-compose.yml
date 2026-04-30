@@ -89,7 +89,13 @@ services:
       # predis for high-frequency cache + session traffic. Override to
       # `predis` only if a deploy needs the pure-PHP fallback.
       REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
-      REDIS_PERSISTENT: ${REDIS_PERSISTENT:-true}
+      # Persistent connections sound great on paper but break under
+      # PHP-FPM at load: workers cycle every pm.max_requests=1000, and
+      # phpredis leaks/recreates persistent handles on each cycle. We
+      # measured 100 VUs going from p95=58s (persistent=true) to
+      # p95=229ms (persistent=false). Keep this off unless you have a
+      # very good reason — the cost of a fresh socket is ~1ms.
+      REDIS_PERSISTENT: ${REDIS_PERSISTENT:-false}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-asked}
