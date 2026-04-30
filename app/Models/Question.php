@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'team_id',
     'question_list_id',
+    'addressed_in_session_id',
+    'addressed_at',
     'author_name',
     'body',
     'status',
@@ -50,6 +52,16 @@ class Question extends Model
     }
 
     /**
+     * Get the stream session in which this question was addressed (if any).
+     *
+     * @return BelongsTo<StreamSession, $this>
+     */
+    public function addressedInSession(): BelongsTo
+    {
+        return $this->belongsTo(StreamSession::class, 'addressed_in_session_id');
+    }
+
+    /**
      * Determine if the question is visible to the public.
      */
     public function isPubliclyVisible(): bool
@@ -80,6 +92,7 @@ class Question extends Model
             'status' => QuestionStatus::class,
             'answer_source_type' => AnswerSourcePlatform::class,
             'answered_at' => 'datetime',
+            'addressed_at' => 'datetime',
         ];
     }
 }

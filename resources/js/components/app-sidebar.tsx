@@ -1,5 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Inbox, LayoutGrid, ListTodo, Palette } from 'lucide-react';
+import {
+    BookOpen,
+    Inbox,
+    LayoutGrid,
+    ListTodo,
+    Palette,
+    Radio,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { NavFooter } from '@/components/nav-footer';
@@ -23,6 +30,7 @@ import {
     board as questionsBoard,
     inbox as questionsInbox,
 } from '@/routes/questions';
+import { index as streamIndex } from '@/routes/stream';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
@@ -50,6 +58,16 @@ export function AppSidebar() {
                       title: t('app.nav.questions'),
                       href: questionsBoard(currentTeam.slug).url,
                       icon: ListTodo,
+                  },
+              ]
+            : []),
+        ...(currentTeam &&
+        (currentTeam.role === 'owner' || currentTeam.role === 'admin')
+            ? [
+                  {
+                      title: t('app.nav.live'),
+                      href: streamIndex(currentTeam.slug).url,
+                      icon: Radio,
                   },
               ]
             : []),

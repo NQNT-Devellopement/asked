@@ -103,6 +103,16 @@ class Team extends Model
     }
 
     /**
+     * Get all stream sessions belonging to this team.
+     *
+     * @return HasMany<StreamSession, $this>
+     */
+    public function streamSessions(): HasMany
+    {
+        return $this->hasMany(StreamSession::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

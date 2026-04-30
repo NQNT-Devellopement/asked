@@ -15,6 +15,7 @@ return [
         'dashboard' => 'Dashboard',
         'inbox' => 'Inbox',
         'questions' => 'Questions',
+        'live' => 'Live',
         'customize' => 'Customize',
         'repository' => 'Repository',
         'documentation' => 'Documentation',

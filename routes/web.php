@@ -6,6 +6,8 @@ use App\Http\Controllers\Faq\PublicFaqController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Questions\QuestionController;
 use App\Http\Controllers\Questions\QuestionListController;
+use App\Http\Controllers\Stream\OverlayController;
+use App\Http\Controllers\Stream\StreamSessionController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +49,24 @@ Route::prefix('{current_team}')
         Route::get('customize/preview-slug', [CustomizeController::class, 'previewSlug'])
             ->middleware('throttle:slug-preview')
             ->name('customize.preview-slug');
+
+        Route::prefix('stream')->name('stream.')->group(function () {
+            Route::get('/', [StreamSessionController::class, 'index'])->name('index');
+            Route::post('/', [StreamSessionController::class, 'store'])->name('store');
+            Route::get('{session}', [StreamSessionController::class, 'show'])->name('show');
+            Route::patch('{session}', [StreamSessionController::class, 'update'])->name('update');
+            Route::delete('{session}', [StreamSessionController::class, 'destroy'])->name('destroy');
+
+            Route::post('{session}/next', [StreamSessionController::class, 'next'])->name('next');
+            Route::post('{session}/show/{question}', [StreamSessionController::class, 'showQuestion'])->name('show-question');
+            Route::post('{session}/skip', [StreamSessionController::class, 'skip'])->name('skip');
+            Route::post('{session}/answer', [StreamSessionController::class, 'answer'])->name('answer');
+            Route::post('{session}/address', [StreamSessionController::class, 'address'])->name('address');
+            Route::post('{session}/end', [StreamSessionController::class, 'end'])->name('end');
+            Route::post('{session}/apply-source', [StreamSessionController::class, 'applySource'])->name('apply-source');
+            Route::post('{session}/hide', [StreamSessionController::class, 'hide'])->name('hide');
+            Route::post('{session}/regenerate-token', [StreamSessionController::class, 'regenerateToken'])->name('regenerate-token');
+        });
     });
 
 Route::middleware(['auth'])->group(function () {
@@ -54,6 +74,11 @@ Route::middleware(['auth'])->group(function () {
 });
 
 require __DIR__.'/settings.php';
+
+Route::get('overlay/{token}', [OverlayController::class, 'show'])->name('overlay.show');
+Route::get('overlay/{token}/state.json', [OverlayController::class, 'state'])
+    ->middleware('throttle:overlay-poll')
+    ->name('overlay.state');
 
 Route::get('{team:slug}', [PublicFaqController::class, 'show'])->name('faq.show');
 Route::post('{team:slug}/questions', [PublicFaqController::class, 'storeQuestion'])

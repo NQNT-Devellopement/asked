@@ -15,6 +15,7 @@ return [
         'dashboard' => 'Tableau de bord',
         'inbox' => 'Boîte de réception',
         'questions' => 'Questions',
+        'live' => 'En direct',
         'customize' => 'Personnaliser',
         'repository' => 'Dépôt',
         'documentation' => 'Documentation',

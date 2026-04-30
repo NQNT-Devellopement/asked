@@ -18,6 +18,8 @@ createInertiaApp({
                 return null;
             case name.startsWith('faq/'):
                 return null;
+            case name.startsWith('overlay/'):
+                return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
             case name.startsWith('settings/'):
@@ -25,6 +27,7 @@ createInertiaApp({
                 return [AppLayout, SettingsLayout];
             case name.startsWith('questions/'):
             case name.startsWith('customize/'):
+            case name.startsWith('stream/'):
                 return AppLayout;
             default:
                 return AppLayout;

@@ -107,5 +107,9 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('slug-preview', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
+
+        RateLimiter::for('overlay-poll', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip().'|'.($request->route('token') ?? 'unknown'));
+        });
     }
 }
