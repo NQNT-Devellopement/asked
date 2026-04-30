@@ -33,6 +33,12 @@ services:
     # without affecting production deploys (it's gitignored).
     expose:
       - "8080"
+    networks:
+      # `default` lets the app talk to db + redis on the internal stack network.
+      # `dokploy-network` is Traefik's external network — without this, Dokploy
+      # can't route the domain to the container and you get 502 Bad Gateway.
+      - default
+      - dokploy-network
     environment:
       # --- App ---
       APP_NAME: "Asked."
@@ -148,3 +154,12 @@ services:
 volumes:
   asked-db:
   asked-redis:
+
+networks:
+  # The internal stack network (default) is created automatically; only the
+  # external Traefik network needs declaring so Compose knows not to create
+  # it. Dokploy provisions `dokploy-network` on each host. Locally, run
+  # `docker network create dokploy-network` once before `docker compose up`,
+  # or remove the `dokploy-network` reference from the app service.
+  dokploy-network:
+    external: true
