@@ -33,19 +33,25 @@ class Question extends Model
     use HasFactory;
 
     /**
-     * Bust the per-team `pendingCount` cache when a question is written or
-     * deleted in a way that affects the count. The cache key is the same one
-     * read by `HandleInertiaRequests::share()` for the sidebar badge.
+     * Bust two per-team caches on writes:
+     *   - `team:{id}:pendingCount` — the sidebar badge count, cached 10s
+     *     in `HandleInertiaRequests::share()`.
+     *   - `team:{id}:public-faq` — the public FAQ page payload, cached 30s
+     *     in `PublicFaqController::show()`.
+     *
+     * The `team_id` may change in pathological cases (e.g. moving a question
+     * between teams) — invalidate both sides if it did.
      */
     protected static function booted(): void
     {
         $bust = function (Question $question): void {
-            // `getOriginal('status')` is the pre-write value; `status` (cast)
-            // is the post-write value. Either side touching `Pending` means
-            // the cached count is stale.
+            $teamIds = array_unique(array_filter([
+                $question->team_id,
+                $question->getOriginal('team_id'),
+            ]));
+
             $original = $question->getOriginal('status');
             $current = $question->status;
-
             $pendingValue = QuestionStatus::Pending->value;
 
             $touchesPending = $question->wasRecentlyCreated
@@ -53,19 +59,16 @@ class Question extends Model
                 || $original === QuestionStatus::Pending
                 || $original === $pendingValue;
 
-            if (! $touchesPending) {
-                return;
-            }
-
-            // `team_id` may change in pathological cases (e.g. moving a
-            // question between teams) — invalidate both sides if it did.
-            $teamIds = array_unique(array_filter([
-                $question->team_id,
-                $question->getOriginal('team_id'),
-            ]));
-
+            // For the public-faq cache, any visible-state transition matters
+            // (Approved/Answered shows; Pending/Hidden/Rejected doesn't), and
+            // edits to the body/order of an already-visible question also
+            // matter. Cheap to be conservative — just bust on every write.
             foreach ($teamIds as $teamId) {
-                Cache::forget("team:{$teamId}:pendingCount");
+                if ($touchesPending) {
+                    Cache::forget("team:{$teamId}:pendingCount");
+                }
+
+                Cache::forget("team:{$teamId}:public-faq");
             }
         };
 

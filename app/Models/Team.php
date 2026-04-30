@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 #[Fillable(['name', 'headline', 'tagline', 'slug', 'is_personal', 'template', 'theme'])]
 class Team extends Model
@@ -36,6 +37,14 @@ class Team extends Model
             if ($team->isDirty('name')) {
                 $team->slug = static::generateUniqueTeamSlug($team->name, $team->id);
             }
+        });
+
+        // Bust the public FAQ payload cache when a creator updates anything
+        // that changes how the page renders (name, headline, tagline, theme,
+        // template, slug). The PublicFaqController caches by team id; the
+        // 30s TTL is the safety net, this is the immediate-feedback path.
+        static::saved(function (Team $team) {
+            Cache::forget("team:{$team->id}:public-faq");
         });
     }
 
