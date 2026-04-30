@@ -65,21 +65,28 @@ function runK6(script, vus, duration, extraEnv = {}) {
 
     const cmd =
         `k6 run --quiet --vus ${vus} --duration ${duration} ` +
-        `--summary-trend-stats=avg,p(95),p(99),max ` +
+        `'--summary-trend-stats=avg,p(95),p(99),max' ` +
         `--summary-export=${summaryPath} ${envFlags} ` +
         `tests/load/${script}.js`;
 
     process.stdout.write(`  ${fmt.cyan('▶')} ${script} @ ${vus} VUs / ${duration} ... `);
     const start = Date.now();
+    let stderr = '';
     try {
         execSync(cmd, { cwd: REPO_ROOT, stdio: 'pipe' });
-    } catch {
-        // k6 exits non-zero when thresholds breach; we still get the summary
+    } catch (err) {
+        // k6 exits non-zero when thresholds breach; we still get the summary.
+        // Capture stderr so we can surface real failures (bad flag, missing
+        // binary, syntax error in script) instead of silently reporting 0s.
+        stderr = (err.stderr ?? '').toString();
     }
     const elapsed = ((Date.now() - start) / 1000).toFixed(0);
     process.stdout.write(`${fmt.dim(`(${elapsed}s)`)}\n`);
 
     if (!existsSync(summaryPath)) {
+        if (stderr) {
+            console.error(fmt.red(`    k6 failed:\n`) + stderr.trim().split('\n').map((l) => `      ${l}`).join('\n'));
+        }
         return null;
     }
     return parseSummary(JSON.parse(readFileSync(summaryPath, 'utf8')));
