@@ -43,23 +43,32 @@ class OverlayController extends Controller
      * roughly every 1.5 seconds.
      *
      * The payload is cached by token for 1 second so that N viewers of the
-     * same stream collapse to ~1 DB read per second instead of N. The cache
-     * miss path also opportunistically updates `last_polled_at` (so writes
-     * happen at most once/sec per token rather than once per poll).
+     * same stream collapse to ~1 DB read per second instead of N. We cache
+     * the entire branch (including the session lookup) so cache hits never
+     * touch Postgres at all — important when 1k+ viewers poll the same
+     * stream simultaneously.
      *
-     * Token validation runs OUTSIDE the cache so an invalid / inactive
-     * session always 404s and never caches a "live" payload it shouldn't.
+     * 404s are also cached (as `null`) for 1s — keeps a flood of bad-token
+     * requests from hammering the DB.
      */
     public function state(string $token): JsonResponse
     {
-        $session = $this->resolveSession($token);
-
         $payload = Cache::remember(
             "overlay-state:{$token}",
             now()->addSecond(),
-            function () use ($session): array {
-                $session->loadMissing(['team', 'currentQuestion.questionList:id,name,color']);
+            function () use ($token): ?array {
+                $session = StreamSession::query()
+                    ->where('secret_token', $token)
+                    ->where('is_active', true)
+                    ->with(['team', 'currentQuestion.questionList:id,name,color'])
+                    ->first();
 
+                if ($session === null) {
+                    return null;
+                }
+
+                // Bump last_polled_at on cache miss only (i.e., at most once
+                // per second per token), not on every poll.
                 $session->forceFill(['last_polled_at' => now()])->saveQuietly();
 
                 return [
@@ -75,6 +84,8 @@ class OverlayController extends Controller
                 ];
             },
         );
+
+        abort_if($payload === null, 404);
 
         return response()->json($payload);
     }

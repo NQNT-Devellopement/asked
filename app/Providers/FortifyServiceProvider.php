@@ -109,7 +109,11 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('overlay-poll', function (Request $request) {
-            return Limit::perMinute(120)->by($request->ip().'|'.($request->route('token') ?? 'unknown'));
+            // 600/min ≈ 10/sec — generous headroom for legitimate use (the
+            // browser-source polls 1×/1.5s ≈ 40/min, plus refreshes / multi-
+            // tab / Chromium prefetch noise) while still preventing a single
+            // IP+token from drowning the cache layer.
+            return Limit::perMinute(600)->by($request->ip().'|'.($request->route('token') ?? 'unknown'));
         });
     }
 }

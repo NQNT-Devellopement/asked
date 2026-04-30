@@ -95,7 +95,7 @@ test('the state endpoint is throttled past the limit', function () {
         'created_by_user_id' => User::factory()->create()->id,
     ]);
 
-    for ($i = 0; $i < 120; $i++) {
+    for ($i = 0; $i < 600; $i++) {
         $this->getJson(route('overlay.state', ['token' => $session->secret_token]))
             ->assertOk();
     }
