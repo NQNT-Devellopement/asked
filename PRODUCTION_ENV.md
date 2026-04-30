@@ -1,8 +1,8 @@
 # Production env — `asked.fr`
 
-Copy-paste-ready environment variables for deploying **Asked.** to production via **Dokploy + Dockerfile**, configured for the domain `asked.fr`.
+Copy-paste-ready environment variables for deploying **Asked.** to production via **Dokploy + Compose**, configured for the domain `asked.fr`. The compose stack includes app + Postgres + Redis — most env vars below are wired automatically; you only need to set the secrets.
 
-> **Security note.** `APP_KEY`, `DB_PASSWORD`, `MAIL_PASSWORD` are secrets — never commit them. Replace the placeholders with real values inside Dokploy's **Environment** UI (not in this file or the repo).
+> **Security note.** `APP_KEY`, `DB_PASSWORD`, `REDIS_PASSWORD`, `MAIL_PASSWORD` are secrets — never commit them. Replace the placeholders with real values inside Dokploy's **Environment** UI (not in this file or the repo).
 
 ---
 
@@ -18,87 +18,42 @@ Paste the resulting `base64:…` string into the `APP_KEY` field in Dokploy.
 
 ---
 
-## 2. App & runtime
+## 2. Required secrets — set these in Dokploy
+
+The compose file declares sensible defaults for everything else; these are the only env vars you MUST provide.
 
 ```env
-APP_NAME="Asked."
-APP_ENV=production
+# App
 APP_KEY=base64:REPLACE_WITH_GENERATED_KEY
-APP_DEBUG=false
 APP_URL=https://asked.fr
-APP_LOCALE=en
-APP_FALLBACK_LOCALE=en
+APP_ENV=production
+APP_DEBUG=false
 
-VITE_APP_NAME="Asked."
+# Database (Postgres in the `db` service)
+DB_PASSWORD=REPLACE_WITH_RANDOM_HEX
 
-LOG_CHANNEL=stack
-LOG_STACK=single
-LOG_LEVEL=warning
-```
+# Redis (the `redis` service) — optional but recommended
+REDIS_PASSWORD=REPLACE_WITH_RANDOM_HEX
 
-## 3. Reverse proxy + session
-
-Required when the app sits behind Dokploy's Traefik proxy (always the case).
-
-```env
-TRUSTED_PROXIES=*
-
-SESSION_DRIVER=database
-SESSION_LIFETIME=120
+# Cookies + proxy
 SESSION_SECURE_COOKIE=true
 SESSION_DOMAIN=.asked.fr
-SESSION_SAME_SITE=lax
+```
+
+Generate the two passwords:
+
+```bash
+openssl rand -hex 32   # for DB_PASSWORD
+openssl rand -hex 32   # for REDIS_PASSWORD
 ```
 
 `SESSION_DOMAIN=.asked.fr` (with the leading dot) lets subdomains share the session. If you only ever use the apex `asked.fr`, drop the leading dot or omit the line.
 
-## 4. Database — pick **one**
+---
 
-### Option A — Postgres managed by Dokploy (recommended)
+## 3. Mail — set when SMTP is ready
 
-1. In Dokploy, create a Postgres service.
-2. Copy its credentials into:
-
-```env
-DB_CONNECTION=pgsql
-DB_HOST=REPLACE_WITH_DOKPLOY_HOST
-DB_PORT=5432
-DB_DATABASE=asked
-DB_USERNAME=asked
-DB_PASSWORD=REPLACE_WITH_DOKPLOY_PASSWORD
-```
-
-### Option B — SQLite + persistent volume
-
-1. In Dokploy, add a volume mounted at `/app/database`.
-2. Set:
-
-```env
-DB_CONNECTION=sqlite
-DB_DATABASE=/app/database/database.sqlite
-```
-
-Pros: zero infra. Cons: single instance only, no horizontal scaling.
-
-## 5. Cache & queue
-
-```env
-CACHE_STORE=database
-QUEUE_CONNECTION=database
-BROADCAST_CONNECTION=null
-```
-
-## 6. Mail
-
-Until you have an SMTP provider, send-as-log keeps the app working without burning real emails:
-
-```env
-MAIL_MAILER=log
-MAIL_FROM_ADDRESS="hello@asked.fr"
-MAIL_FROM_NAME="Asked."
-```
-
-When SMTP is ready (Resend / Postmark / OVH / Mailgun / etc.):
+The compose default is `MAIL_MAILER=log` (writes to `storage/logs/laravel.log`, no real emails sent). When you have an SMTP provider (Resend / Postmark / OVH / Mailgun / etc.), override:
 
 ```env
 MAIL_MAILER=smtp
@@ -111,26 +66,37 @@ MAIL_FROM_ADDRESS="hello@asked.fr"
 MAIL_FROM_NAME="Asked."
 ```
 
-## 7. Fortify (auth) — optional
+---
 
-Defaults are fine; only set explicitly if you want to be sure.
+## 4. Optional overrides
+
+The compose file already sets these to good production defaults. Only override if you have a specific reason.
 
 ```env
-FORTIFY_GUARD=web
-FORTIFY_PASSWORDS=users
+APP_LOCALE=fr               # default `en`
+LOG_LEVEL=info              # default `warning`
+APP_PORT=8080               # host port mapping (default 8080)
 ```
+
+The compose stack also wires (no need to set):
+
+- `DB_CONNECTION=pgsql` + `DB_HOST=db` + `DB_PORT=5432` + `DB_DATABASE=asked` + `DB_USERNAME=asked`
+- `REDIS_CLIENT=predis` + `REDIS_HOST=redis` + `REDIS_PORT=6379`
+- `CACHE_STORE=redis` + `SESSION_DRIVER=redis` + `QUEUE_CONNECTION=redis`
+- `TRUSTED_PROXIES=*`
+- `VITE_APP_NAME="Asked."`
 
 ---
 
-## Dokploy steps
+## Dokploy steps (compose flow)
 
-1. **Create app** → connect repo `NQNT-Devellopement/asked`, branch `main`, build provider = **Dockerfile** (auto-detected from the repo root).
-2. **Add env vars** above into Dokploy's Environment UI.
-3. **Database** → either create the Postgres service (Option A) or add a `/app/database` volume (Option B).
-4. **Domain** → map `asked.fr` to the app, enable Let's Encrypt for HTTPS. Container listens on port `8080`.
+1. **Create Compose app** → connect repo `NQNT-Devellopement/asked`, branch `main`.
+2. Dokploy reads `docker-compose.yml` automatically (3 services: `app`, `db`, `redis`).
+3. Add the **secrets** from [section 2](#2-required-secrets--set-these-in-dokploy) into Dokploy's Environment UI.
+4. **Domain** → map `asked.fr` to the `app` service on port `8080`. Enable Let's Encrypt.
 5. **Deploy.**
 
-On first boot, `docker/entrypoint.sh` runs `php artisan migrate --force` + recaches config / routes / views, then supervisord starts nginx + PHP-FPM + a queue worker.
+On first boot, Compose brings up `db` + `redis`, waits for both healthchecks, then starts `app`. The app's entrypoint (`docker/entrypoint.sh`) runs `php artisan migrate --force` + recaches config / routes / views, then supervisord starts nginx + PHP-FPM + queue worker.
 
 ---
 
@@ -141,13 +107,28 @@ On first boot, `docker/entrypoint.sh` runs `php artisan migrate --force` + recac
 - `https://asked.fr/register` → registration flow works
 - `https://asked.fr/docs` → manual renders
 
-If anything 5xx's at boot, the Laravel error stack-trace is in Dokploy's logs (`LOG_LEVEL=warning` keeps them concise).
+If anything 5xx's at boot, the Laravel error stack-trace is in Dokploy's logs (`LOG_LEVEL=warning` keeps them concise — bump to `info` or `debug` to dig deeper).
+
+---
+
+## Local prod-parity testing
+
+The same `docker-compose.yml` works for local testing:
+
+```bash
+APP_KEY=$(php artisan key:generate --show)
+DB_PASSWORD=$(openssl rand -hex 16)
+APP_KEY="$APP_KEY" DB_PASSWORD="$DB_PASSWORD" docker compose up --build
+open http://localhost:8080
+```
+
+`docker compose down -v` clears the Postgres + Redis volumes between runs.
 
 ---
 
 ## See also
 
-- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — full deployment reference (variants, troubleshooting, Docker fallback)
+- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — full deployment reference (Dockerfile-only fallback, troubleshooting)
 - [`README.md`](./README.md) — project overview
-- [`Dockerfile`](./Dockerfile) — multi-stage build (composer + node → php-fpm + nginx)
-- [`docker-compose.yml`](./docker-compose.yml) — local prod-parity stack with Postgres
+- [`docker-compose.yml`](./docker-compose.yml) — the actual stack definition
+- [`Dockerfile`](./Dockerfile) — the app image (multi-stage build)

@@ -1,20 +1,27 @@
 # Deployment
 
-Asked. ships as a standard Laravel 13 + Inertia v3 + React 19 app. Production deploys are container-based: the repo includes a multi-stage `Dockerfile` that builds the Vite bundle + Composer artifacts, then runs nginx + PHP-FPM 8.4 + a queue worker via supervisord. Recommended host is **[Dokploy](https://docs.dokploy.com/)**, but anything that runs a Dockerfile works.
+Asked. ships as a standard Laravel 13 + Inertia v3 + React 19 app. Production deploys are container-based: the repo ships both a **`docker-compose.yml`** (recommended — bundles app + Postgres + Redis in one file) and a standalone **`Dockerfile`** for SQLite-only deployments. Recommended host is **[Dokploy](https://docs.dokploy.com/)**, but anything that runs Compose works.
 
 ---
 
-## Quick start (Dokploy + Dockerfile)
+## Quick start (Dokploy + Compose)
 
-1. **Create the app** — In Dokploy: *Create Application* → connect this GitHub repository → pick the deployment branch (`main`).
-2. **Build provider** — Choose **Dockerfile** (Dokploy auto-detects the `Dockerfile` at the repo root).
-3. **Environment variables** — Paste the values from [Required environment variables](#required-environment-variables) below. `PRODUCTION_ENV.md` has a copy-paste-ready block tuned for `asked.fr`.
-4. **Persistence** — Either:
-   - mount a Dokploy persistent volume at `/app/database` (SQLite, default), **or**
-   - attach a Dokploy-managed Postgres/MySQL service and point `DB_*` at it.
-5. **Domain & TLS** — Add a domain in Dokploy and enable Let's Encrypt auto-SSL.
-6. **Port** — The container listens on `8080` (nginx). Dokploy maps that to your domain automatically.
-7. **Deploy** — Click *Deploy*. The container's entrypoint runs `php artisan migrate --force` + recaches config / routes / views before supervisord starts nginx + PHP-FPM + queue worker.
+1. **Create the app** — In Dokploy: *Create Compose* → connect this GitHub repository → pick the deployment branch (`main`).
+2. **Compose file** — Dokploy auto-detects `docker-compose.yml` at the repo root. The file declares three services: `app`, `db` (Postgres 16), `redis` (Redis 7).
+3. **Environment variables** — Paste the values from [Required environment variables](#required-environment-variables) below. `PRODUCTION_ENV.md` has a copy-paste-ready block tuned for `asked.fr`. Dokploy injects these into the compose stack via the `${VAR}` placeholders in the file.
+4. **Volumes** — Already declared inside the compose file (`asked-db`, `asked-redis`). Dokploy creates them automatically.
+5. **Domain & TLS** — Map the domain to the `app` service (port `8080`). Enable Let's Encrypt auto-SSL.
+6. **Deploy** — Click *Deploy*. Compose brings up `db` + `redis` first, waits for both healthchecks, then starts `app` whose entrypoint runs `php artisan migrate --force` + recaches config / routes / views before supervisord starts nginx + PHP-FPM + queue worker.
+
+### Alternative — Dockerfile-only (SQLite, single container)
+
+If you don't want Postgres/Redis services, you can deploy just the `Dockerfile`:
+
+1. *Create Application* (not *Create Compose*) → connect repo, build provider = **Dockerfile**.
+2. Add a persistent volume mounted at `/data`.
+3. Set `DB_CONNECTION=sqlite` + `DB_DATABASE=/data/asked.sqlite`. Skip the `DB_*` Postgres vars and the `REDIS_*` vars (defaults to file/database cache).
+
+Less performant, simpler infra. Fine for low-traffic personal deploys.
 
 ---
 

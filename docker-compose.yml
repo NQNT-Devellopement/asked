@@ -1,16 +1,21 @@
-# Asked. — local prod-like stack
+# Asked. — full production stack: app + Postgres + Redis
 #
-# Builds the production Dockerfile and pairs it with a Postgres service.
-# Useful for testing the runtime image before pushing to Dokploy.
+# Dokploy reads this file directly (Compose deployment mode). The same
+# file works for local prod-parity testing:
 #
 #   APP_KEY=$(php artisan key:generate --show)
-#   docker compose build
-#   docker compose up
+#   DB_PASSWORD=$(openssl rand -hex 16)
+#   APP_KEY="$APP_KEY" DB_PASSWORD="$DB_PASSWORD" docker compose up --build
 #   open http://localhost:8080
 #
-# Dokploy itself doesn't read this file — it builds the Dockerfile directly.
+# Variables with `${VAR:-default}` syntax fall back to the local-friendly
+# default when unset; in production set them via Dokploy's Environment UI
+# (which overrides values declared here).
 
 services:
+  # -------------------------------------------------------------------------
+  # Asked. — Laravel + Inertia + nginx + php-fpm + supervisord
+  # -------------------------------------------------------------------------
   app:
     build:
       context: .
@@ -19,44 +24,66 @@ services:
     container_name: asked-app
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${APP_PORT:-8080}:8080"
     environment:
+      # --- App ---
       APP_NAME: "Asked."
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-production}
       APP_KEY: ${APP_KEY}
-      APP_DEBUG: "false"
+      APP_DEBUG: ${APP_DEBUG:-false}
       APP_URL: ${APP_URL:-http://localhost:8080}
-      APP_LOCALE: en
+      APP_LOCALE: ${APP_LOCALE:-en}
+      APP_FALLBACK_LOCALE: en
 
       VITE_APP_NAME: "Asked."
 
+      # --- Logs ---
       LOG_CHANNEL: stack
       LOG_STACK: single
-      LOG_LEVEL: warning
+      LOG_LEVEL: ${LOG_LEVEL:-warning}
 
+      # --- Reverse proxy ---
       TRUSTED_PROXIES: "*"
-      SESSION_DRIVER: database
+
+      # --- Sessions (in Redis) ---
+      SESSION_DRIVER: redis
       SESSION_LIFETIME: 120
-      SESSION_SECURE_COOKIE: "false"
-      SESSION_DOMAIN: ""
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
+      SESSION_DOMAIN: ${SESSION_DOMAIN:-}
       SESSION_SAME_SITE: lax
 
+      # --- Database (Postgres in the `db` service) ---
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: 5432
-      DB_DATABASE: asked
-      DB_USERNAME: asked
+      DB_DATABASE: ${DB_DATABASE:-asked}
+      DB_USERNAME: ${DB_USERNAME:-asked}
       DB_PASSWORD: ${DB_PASSWORD:-asked}
 
-      CACHE_STORE: database
-      QUEUE_CONNECTION: database
+      # --- Cache + queue (in Redis in the `redis` service) ---
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
       BROADCAST_CONNECTION: log
+      FILESYSTEM_DISK: local
 
-      MAIL_MAILER: log
-      MAIL_FROM_ADDRESS: "hello@asked.local"
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
+      # --- Mail (defaults to log; switch to smtp + creds in Dokploy) ---
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-127.0.0.1}
+      MAIL_PORT: ${MAIL_PORT:-2525}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@asked.local}
       MAIL_FROM_NAME: "Asked."
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/up"]
@@ -65,21 +92,46 @@ services:
       retries: 3
       start_period: 30s
 
+  # -------------------------------------------------------------------------
+  # Postgres — primary store
+  # -------------------------------------------------------------------------
   db:
     image: postgres:16-alpine
     container_name: asked-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: asked
-      POSTGRES_USER: asked
+      POSTGRES_DB: ${DB_DATABASE:-asked}
+      POSTGRES_USER: ${DB_USERNAME:-asked}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-asked}
     volumes:
       - asked-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U asked -d asked"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-asked} -d ${DB_DATABASE:-asked}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # -------------------------------------------------------------------------
+  # Redis — cache + sessions + queue
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: asked-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --save 60 1
+      --loglevel warning
+      ${REDIS_PASSWORD:+--requirepass}
+      ${REDIS_PASSWORD:-}
+    volumes:
+      - asked-redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ${REDIS_PASSWORD:+-a $$REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
 volumes:
   asked-db:
+  asked-redis:
