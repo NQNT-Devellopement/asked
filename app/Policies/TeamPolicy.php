@@ -87,4 +87,12 @@ class TeamPolicy
     {
         return ! $team->is_personal && $user->hasTeamPermission($team, TeamPermission::DeleteTeam);
     }
+
+    /**
+     * Determine whether the user can manage the team's moderation settings.
+     */
+    public function manageModeration(User $user, Team $team): bool
+    {
+        return $user->hasTeamPermission($team, TeamPermission::ManageModeration);
+    }
 }

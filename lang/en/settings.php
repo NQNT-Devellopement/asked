@@ -54,4 +54,17 @@ return [
         'dark' => 'Dark',
         'system' => 'System',
     ],
+    'moderation' => [
+        'page_title' => 'Moderation',
+        'breadcrumb' => 'Moderation',
+        'section_title' => 'Banned words',
+        'section_description' => 'Words banned from public question submissions to this team.',
+        'global_notice' => 'A baseline list applies app-wide. Add team-specific words here.',
+        'add_label' => 'Add a word',
+        'add_placeholder' => 'Type a word then click "Add"',
+        'add_button' => 'Add',
+        'empty' => 'No words added for this team.',
+        'remove_aria' => 'Remove ":word"',
+        'save' => 'Save',
+    ],
 ];

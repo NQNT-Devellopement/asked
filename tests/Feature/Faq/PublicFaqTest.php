@@ -142,3 +142,15 @@ test('it rate-limits after 5 submissions per minute', function () {
 
     $response->assertStatus(429);
 });
+
+test('the payload exposes a normalized banned words list combining global and team', function () {
+    $team = Team::factory()->create(['banned_words' => ['blorp']]);
+
+    $response = $this->get(route('faq.show', $team));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('bannedWords')
+        ->where('bannedWords', fn ($list) => in_array('blorp', $list->toArray(), true) && in_array('fuck', $list->toArray(), true))
+    );
+});

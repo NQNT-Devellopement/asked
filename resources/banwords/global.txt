@@ -1,0 +1,10 @@
+# Global banword seed list. Lines starting with # are ignored.
+# Words are normalized at load time (lowercase + ascii + leetspeak).
+# Keep this list short and conservative; teams can add their own.
+fuck
+shit
+nigger
+faggot
+connard
+salope
+encule

@@ -1,4 +1,4 @@
-import { Form, Head, router, setLayoutProps } from '@inertiajs/react';
+import { Form, Head, Link, router, setLayoutProps } from '@inertiajs/react';
 import { ChevronDown, Mail, UserPlus, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { useTranslate } from '@/lib/i18n';
 import { edit, index, update } from '@/routes/teams';
 import { update as updateMember } from '@/routes/teams/members';
+import { edit as moderationEdit } from '@/routes/teams/moderation';
 import type {
     RoleOption,
     Team,
@@ -162,6 +163,23 @@ export default function TeamEdit({
                         </>
                     )}
                 </div>
+
+                {permissions.canManageModeration ? (
+                    <div className="space-y-6">
+                        <Heading
+                            variant="small"
+                            title={t('teams.edit.moderation_link')}
+                            description={t(
+                                'teams.edit.moderation_link_description',
+                            )}
+                        />
+                        <Button asChild variant="outline">
+                            <Link href={moderationEdit(team.slug).url}>
+                                {t('teams.edit.moderation_link')}
+                            </Link>
+                        </Button>
+                    </div>
+                ) : null}
 
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">

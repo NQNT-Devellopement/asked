@@ -17,6 +17,8 @@ return [
         'page_title_view' => 'View :name',
         'team_settings_title' => 'Team settings',
         'team_settings_description' => 'Update your team name and settings',
+        'moderation_link' => 'Manage moderation',
+        'moderation_link_description' => 'Banned words for public question submissions to this team.',
         'team_name_label' => 'Team name',
         'team_members_title' => 'Team members',
         'team_members_description' => 'Manage who belongs to this team',

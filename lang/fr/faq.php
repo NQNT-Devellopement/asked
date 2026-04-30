@@ -36,6 +36,8 @@ return [
         'toast_title' => 'Question envoyée',
         'toast_description' => ':name la verra dans sa boîte de réception.',
         'toast_failed' => 'Impossible d’envoyer votre question. Veuillez réessayer.',
+        'banned_content' => 'Votre question contient du contenu non autorisé.',
+        'banned_name' => "Ce nom n'est pas autorisé.",
     ],
     'empty' => [
         'eyebrow' => 'Aucune question pour l’instant',

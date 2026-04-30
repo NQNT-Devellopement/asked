@@ -6,6 +6,7 @@ use App\Enums\QuestionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Faq\StoreQuestionRequest;
 use App\Models\Team;
+use App\Support\ContentFilter;
 use App\Support\QuestionPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
@@ -72,6 +73,7 @@ class PublicFaqController extends Controller
                 ->map(QuestionPresenter::toArray(...))
                 ->values()
                 ->all(),
+            'bannedWords' => app(ContentFilter::class)->bannedWordsForClient($team),
         ];
     }
 

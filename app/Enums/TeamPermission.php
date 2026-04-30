@@ -17,4 +17,5 @@ enum TeamPermission: string
     case ManageQuestions = 'question:manage';
     case ModerateQuestions = 'question:moderate';
     case CustomizePage = 'page:customize';
+    case ManageModeration = 'moderation:manage';
 }

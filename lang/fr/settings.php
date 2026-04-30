@@ -54,4 +54,17 @@ return [
         'dark' => 'Sombre',
         'system' => 'Système',
     ],
+    'moderation' => [
+        'page_title' => 'Modération',
+        'breadcrumb' => 'Modération',
+        'section_title' => 'Mots interdits',
+        'section_description' => "Mots interdits dans les questions publiques de l'équipe.",
+        'global_notice' => "Une liste de base s'applique pour toute l'application. Vous pouvez ajouter ici des mots supplémentaires propres à votre équipe.",
+        'add_label' => 'Ajouter un mot',
+        'add_placeholder' => 'Saisissez un mot puis « Ajouter »',
+        'add_button' => 'Ajouter',
+        'empty' => 'Aucun mot ajouté pour cette équipe.',
+        'remove_aria' => 'Supprimer « :word »',
+        'save' => 'Enregistrer',
+    ],
 ];

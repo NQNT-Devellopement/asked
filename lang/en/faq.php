@@ -36,6 +36,8 @@ return [
         'toast_title' => 'Question sent',
         'toast_description' => ':name will see it in their inbox.',
         'toast_failed' => 'Could not send your question. Please try again.',
+        'banned_content' => 'Your question contains content that is not allowed.',
+        'banned_name' => 'That name is not allowed.',
     ],
     'empty' => [
         'eyebrow' => 'No questions yet',

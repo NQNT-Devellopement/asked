@@ -17,6 +17,8 @@ return [
         'page_title_view' => 'Voir :name',
         'team_settings_title' => 'Paramètres de l’équipe',
         'team_settings_description' => 'Mettez à jour le nom et les paramètres de votre équipe',
+        'moderation_link' => 'Gérer la modération',
+        'moderation_link_description' => 'Mots interdits dans les questions publiques de cette équipe.',
         'team_name_label' => 'Nom de l’équipe',
         'team_members_title' => 'Membres de l’équipe',
         'team_members_description' => 'Gérez les membres de cette équipe',

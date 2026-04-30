@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { Send } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useContentFilter } from '@/hooks/use-content-filter';
 import { useTranslate } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { store as storeQuestion } from '@/routes/faq/questions';
@@ -26,11 +27,21 @@ type FormShape = {
 
 export function QuestionForm({ teamSlug, teamName }: Props) {
     const { t } = useTranslate();
-    const { data, setData, post, processing, errors, reset } =
-        useForm<FormShape>({
-            body: '',
-            author_name: '',
-        });
+    const { props: pageProps } = usePage<{ bannedWords?: string[] }>();
+    const containsBannedWord = useContentFilter(pageProps.bannedWords ?? []);
+    const {
+        data,
+        setData,
+        post,
+        processing,
+        errors,
+        reset,
+        setError,
+        clearErrors,
+    } = useForm<FormShape>({
+        body: '',
+        author_name: '',
+    });
 
     const remaining = BODY_MAX - data.body.length;
     const tooShort =
@@ -44,6 +55,20 @@ export function QuestionForm({ teamSlug, teamName }: Props) {
 
     const onSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+
+        clearErrors();
+
+        if (containsBannedWord(data.body)) {
+            setError('body', t('faq.form.banned_content'));
+
+            return;
+        }
+
+        if (data.author_name && containsBannedWord(data.author_name)) {
+            setError('author_name', t('faq.form.banned_name'));
+
+            return;
+        }
 
         post(storeQuestion(teamSlug).url, {
             preserveScroll: true,

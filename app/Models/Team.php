@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 
-#[Fillable(['name', 'headline', 'tagline', 'slug', 'is_personal', 'template', 'theme'])]
+#[Fillable(['name', 'headline', 'tagline', 'slug', 'is_personal', 'template', 'theme', 'banned_words'])]
 class Team extends Model
 {
     /** @use HasFactory<TeamFactory> */
@@ -132,6 +132,7 @@ class Team extends Model
             'is_personal' => 'boolean',
             'template' => FaqTemplate::class,
             'theme' => 'array',
+            'banned_words' => 'array',
         ];
     }
 
