@@ -65,6 +65,7 @@ function runK6(script, vus, duration, extraEnv = {}) {
 
     const cmd =
         `k6 run --quiet --vus ${vus} --duration ${duration} ` +
+        `--summary-trend-stats=avg,p(95),p(99),max ` +
         `--summary-export=${summaryPath} ${envFlags} ` +
         `tests/load/${script}.js`;
 
@@ -122,16 +123,19 @@ console.log(`  Team:   ${fmt.cyan(TEAM_SLUG)}`);
 console.log(`  Token:  ${fmt.dim(OVERLAY_TOKEN.slice(0, 12) + '…')}\n`);
 
 console.log(fmt.bold('  → Overlay polling capacity'));
-const overlayLevels = [100, 500, 1000, 2000];
+// Each level runs for 60s (30s was too short — cache hadn't fully warmed
+// and rps numbers were noisy). Levels deliberately overshoot expected
+// capacity so we can see exactly where p95 / failure rate explodes.
+const overlayLevels = [100, 500, 1000, 2000, 3000, 5000];
 const overlayResults = [];
 
 for (const vus of overlayLevels) {
-    const r = runK6('k6-overlay', vus, '30s', { OVERLAY_TOKEN });
+    const r = runK6('k6-overlay', vus, '60s', { OVERLAY_TOKEN });
     if (r) overlayResults.push({ vus, ...r });
 }
 
 console.log('\n' + fmt.bold('  → Public FAQ page'));
-const publicResult = runK6('k6-public', 200, '30s', { TEAM_SLUG });
+const publicResult = runK6('k6-public', 200, '60s', { TEAM_SLUG });
 
 console.log('\n' + fmt.bold('=== Results ==='));
 console.log('\n' + fmt.bold('Overlay polling'));

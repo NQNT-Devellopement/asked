@@ -109,11 +109,15 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('overlay-poll', function (Request $request) {
-            // 600/min ≈ 10/sec — generous headroom for legitimate use (the
-            // browser-source polls 1×/1.5s ≈ 40/min, plus refreshes / multi-
-            // tab / Chromium prefetch noise) while still preventing a single
-            // IP+token from drowning the cache layer.
-            return Limit::perMinute(600)->by($request->ip().'|'.($request->route('token') ?? 'unknown'));
+            // Per-IP+token. Default is intentionally very high so load tests
+            // from a single laptop measure the *server*, not the throttle.
+            // The browser-source polls 1×/1.5s ≈ 40 req/min — the real abuse
+            // surface is "one bad actor pinning a token", which the env var
+            // can clamp to a tighter value (e.g. 600) once we trust the
+            // numbers.
+            $limit = (int) env('OVERLAY_POLL_PER_MIN', 60000);
+
+            return Limit::perMinute($limit)->by($request->ip().'|'.($request->route('token') ?? 'unknown'));
         });
     }
 }
