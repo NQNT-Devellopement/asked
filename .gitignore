@@ -50,3 +50,6 @@ yarn-error.log
 # Local SQLite database (also covered by database/.gitignore)
 /database/database.sqlite
 /database/*.sqlite-journal
+
+# Local-only Compose override (gitignored — copy from docker-compose.override.yml.example)
+docker-compose.override.yml

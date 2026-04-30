@@ -1,0 +1,14 @@
+# Local development override for docker-compose.yml.
+#
+# Copy this file to `docker-compose.override.yml` (which is gitignored) to
+# publish the app's port to your host so you can hit http://localhost:8080.
+# Production deploys (Dokploy, etc.) don't have this file because Traefik
+# does the host-port binding itself.
+#
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   docker compose up --build
+
+services:
+  app:
+    ports:
+      - "${APP_PORT:-8080}:8080"

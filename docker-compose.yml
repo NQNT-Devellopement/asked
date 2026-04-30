@@ -23,8 +23,16 @@ services:
     image: asked
     container_name: asked-app
     restart: unless-stopped
-    ports:
-      - "${APP_PORT:-8080}:8080"
+    # No `ports:` mapping — Dokploy's Traefik routes the domain to this
+    # container via the internal Docker network on port 8080 (which the
+    # Dockerfile EXPOSEs). Publishing the port to the host would clash
+    # with other containers Dokploy already binds 0.0.0.0:8080 to.
+    #
+    # For local prod-parity testing, copy `docker-compose.override.yml.example`
+    # to `docker-compose.override.yml` — that file adds the port mapping
+    # without affecting production deploys (it's gitignored).
+    expose:
+      - "8080"
     environment:
       # --- App ---
       APP_NAME: "Asked."
