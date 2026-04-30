@@ -10,7 +10,17 @@ use App\Http\Controllers\Stream\OverlayController;
 use App\Http\Controllers\Stream\StreamSessionController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
+use App\Http\Middleware\HandleAppearance;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetLocale;
+use App\Http\Middleware\SetTeamUrlDefaults;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Fortify\Features;
 
 Route::inertia('/', 'welcome', [
@@ -76,8 +86,27 @@ Route::middleware(['auth'])->group(function () {
 require __DIR__.'/settings.php';
 
 Route::get('overlay/{token}', [OverlayController::class, 'show'])->name('overlay.show');
+
+// Hot path: 1 poll / 1.5s per OBS viewer. Strip the entire web middleware
+// stack (session Redis read+write, Inertia share callback, cookie
+// encrypt/decrypt, locale resolution, CSRF, etc.) — none of it is needed
+// for a public read-only JSON endpoint. Saves ~20-30ms of CPU per request,
+// which is the difference between holding 100 VUs and 1000 VUs on the
+// same hardware.
 Route::get('overlay/{token}/state.json', [OverlayController::class, 'state'])
     ->middleware('throttle:overlay-poll')
+    ->withoutMiddleware([
+        EncryptCookies::class,
+        AddQueuedCookiesToResponse::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        PreventRequestForgery::class,
+        HandleAppearance::class,
+        SetLocale::class,
+        HandleInertiaRequests::class,
+        AddLinkHeadersForPreloadedAssets::class,
+        SetTeamUrlDefaults::class,
+    ])
     ->name('overlay.state');
 
 Route::get('{team:slug}', [PublicFaqController::class, 'show'])->name('faq.show');
